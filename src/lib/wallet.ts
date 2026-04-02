@@ -71,46 +71,20 @@ async function modifyBalance(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'not authenticated' };
 
-  // Get current full wallet
-  const { data: wallet, error: fetchErr } = await supabase
-    .from('wallets')
-    .select('balance, total_earned, total_spent')
-    .eq('user_id', user.id)
-    .single();
-
-  if (fetchErr || !wallet) return { success: false, error: fetchErr?.message ?? 'wallet not found' };
-
-  const newBalance = wallet.balance + amount;
-  if (newBalance < 0) return { success: false, error: 'insufficient balance' };
-
-  const earned = amount > 0 ? amount : 0;
-  const spent = amount < 0 ? Math.abs(amount) : 0;
-
-  // Update wallet
-  const { error: walletErr } = await supabase
-    .from('wallets')
-    .update({
-      balance: newBalance,
-      total_earned: wallet.total_earned + earned,
-      total_spent: wallet.total_spent + spent,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('user_id', user.id);
-
-  if (walletErr) return { success: false, error: walletErr.message };
-
-  // Record transaction
-  const { error: txErr } = await supabase.from('coin_transactions').insert({
-    user_id: user.id,
-    amount,
-    balance_after: newBalance,
-    tx_type: txType,
-    description,
+  // Use secure DB function (prevents client-side balance manipulation)
+  const { data, error } = await supabase.rpc('modify_wallet_balance', {
+    p_user_id: user.id,
+    p_amount: amount,
+    p_tx_type: txType,
+    p_description: description,
   });
 
-  if (txErr) return { success: false, error: txErr.message };
+  if (error) return { success: false, error: error.message };
 
-  return { success: true, newBalance };
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.success) return { success: false, error: 'insufficient balance' };
+
+  return { success: true, newBalance: row.new_balance };
 }
 
 export async function spendCoins(
