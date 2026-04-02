@@ -1,26 +1,24 @@
 ---
-// OAuth callback - PKCE flow with server-side code exchange
-import { createSupabaseServerFromRequest } from '../../lib/supabase';
-export const prerender = false;
-
-const code = Astro.url.searchParams.get('code');
-
-if (code) {
-  const { client, responseCookies } = createSupabaseServerFromRequest(Astro.request);
-  const { error } = await client.auth.exchangeCodeForSession(code);
-
-  if (error) {
-    return Astro.redirect('/auth/login?error=auth_failed');
-  }
-
-  // Set auth cookies and redirect to home
-  const response = Astro.redirect('/home');
-  for (const cookie of responseCookies) {
-    response.headers.append('set-cookie', cookie);
-  }
-  return response;
-}
-
-// No code parameter - invalid callback
-return Astro.redirect('/auth/login');
 ---
+
+<script>
+  import { createSupabaseBrowser } from '../../lib/supabase';
+
+  // Handle OAuth callback: exchange code for session on the client side
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+
+  if (code) {
+    const supabase = createSupabaseBrowser();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      window.location.replace('/auth/login?error=auth_failed');
+    } else {
+      window.location.replace('/home');
+    }
+  } else {
+    // No code parameter — invalid callback
+    window.location.replace('/auth/login');
+  }
+</script>

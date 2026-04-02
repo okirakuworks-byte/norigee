@@ -1,12 +1,5 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { createSupabaseServer } from '../../lib/supabase';
-
-const supabase = createSupabaseServer(Astro);
-const { data: { user } } = await supabase.auth.getUser();
-if (user) {
-  return Astro.redirect('/home');
-}
 ---
 
 <Layout title="INSERT COIN">
@@ -41,6 +34,13 @@ if (user) {
   import { createSupabaseBrowser } from '../../lib/supabase';
 
   const supabase = createSupabaseBrowser();
+
+  // Redirect to home if already logged in
+  const { data: { user: existingUser } } = await supabase.auth.getUser();
+  if (existingUser) {
+    window.location.replace('/home');
+  }
+
   document.getElementById('github-login')?.addEventListener('click', async (e) => {
     e.preventDefault();
     const { error } = await supabase.auth.signInWithOAuth({

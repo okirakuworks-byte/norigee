@@ -1,18 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
-import PostForm from '../../components/PostForm';
-import { createSupabaseServer } from '../../lib/supabase';
-
-const supabase = createSupabaseServer(Astro);
-// Auth guard: must be logged in to post
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) {
-  return Astro.redirect('/auth/login');
-}
-
-const dailyId = Astro.url.searchParams.get('daily');
-const challengeTitle = dailyId ? 'デイリーノリゲー' : undefined;
+import PostFormWrapper from '../../components/PostFormWrapper';
 ---
 
 <Layout title="INSERT COIN">
@@ -23,10 +12,6 @@ const challengeTitle = dailyId ? 'デイリーノリゲー' : undefined;
       <span class="text-neon-yellow">INSERT</span> <span class="text-text-primary">COIN</span>
     </h1>
 
-    <PostForm
-      challengeTitle={challengeTitle}
-      dailyId={dailyId ? Number(dailyId) : undefined}
-      client:load
-    />
+    <PostFormWrapper client:load />
   </main>
 </Layout>
