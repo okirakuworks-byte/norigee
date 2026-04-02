@@ -1,0 +1,6 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import AuthOrDie from '../../components/games/AuthOrDie';
+---
+<Layout title="AUTH OR DIE"><Header /><AuthOrDie client:only="react" /></Layout>

@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import ModerationPanel from '../../components/admin/ModerationPanel';
+import { createSupabaseServer } from '../../lib/supabase';
+
+const supabase = createSupabaseServer(Astro);
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) return Astro.redirect('/auth/login');
+
+const { data: adminRecord } = await supabase
+  .from('admin_users')
+  .select('user_id')
+  .eq('user_id', user.id)
+  .single();
+
+if (!adminRecord) return Astro.redirect('/home');
+---
+
+<Layout title="ADMIN - Moderation">
+  <Header />
+  <main class="max-w-5xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="font-['Orbitron'] text-xl font-bold">
+        <span class="text-neon-pink">ADMIN</span> PANEL
+      </h1>
+      <div class="flex gap-4 text-xs">
+        <a href="/admin" class="text-text-muted hover:text-text-primary transition-colors">お題管理</a>
+        <a href="/admin/users" class="text-text-muted hover:text-text-primary transition-colors">ユーザー</a>
+        <a href="/admin/moderation" class="text-neon-yellow border-b border-neon-yellow pb-1">モデレーション</a>
+      </div>
+    </div>
+    <ModerationPanel client:load />
+  </main>
+</Layout>

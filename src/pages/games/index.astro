@@ -1,0 +1,408 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import { supabase } from '../../lib/supabase';
+
+// Fetch top scores per game for display
+const { data: topScores } = await supabase
+  .from('game_scores')
+  .select('game_id, score, profiles!game_scores_user_id_fkey(display_name)')
+  .order('score', { ascending: false })
+  .limit(100);
+
+// Build a map: gameId → { score, player }
+const highScoreMap: Record<string, { score: number; player: string }> = {};
+if (topScores) {
+  for (const row of topScores as unknown as Array<{ game_id: string; score: number; profiles: { display_name: string } }>) {
+    if (!highScoreMap[row.game_id]) {
+      highScoreMap[row.game_id] = { score: row.score, player: row.profiles?.display_name ?? '?' };
+    }
+  }
+}
+
+interface ArcadeCabinet {
+  id: string;
+  name: string;
+  subtitle: string;
+  description: string;
+  color: string;
+  glowColor: string;
+  icon: string;
+  href: string | null;
+  status: 'playable' | 'coming-soon';
+  difficulty: string;
+}
+
+const cabinets: ArcadeCabinet[] = [
+  {
+    id: 'phishing-hunter',
+    name: 'PHISHING HUNTER',
+    subtitle: 'フィッシングハンター',
+    description: '降り注ぐフィッシングワードをタイピングで撃破せよ。桜田AIが見守るセキュリティ・タイピングゲーム。',
+    color: 'text-neon-cyan',
+    glowColor: 'rgba(0,245,212,0.3)',
+    icon: '🎯',
+    href: '/games/phishing-hunter',
+    status: 'playable',
+    difficulty: '★★',
+  },
+  {
+    id: 'weekly-boss',
+    name: 'BOSS BATTLE',
+    subtitle: 'ボスバトル',
+    description: 'ボスのワードをタイプして攻撃しろ。ボスは画面を揺らし、文字を反転させ、ぼかしてくる。5体倒せばクリア。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '👹',
+    href: '/games/weekly-boss',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'judge-seat',
+    name: 'LIE DETECTOR',
+    subtitle: '嘘発見器',
+    description: '2つの体験談。どっちが本物か3秒で見抜け。10連続正解でクリア。1ミスでリセット。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🔍',
+    href: '/games/judge-seat',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+  {
+    id: 'spin-the-wheel',
+    name: 'PRECISION ROULETTE',
+    subtitle: '精密ルーレット',
+    description: '目標ゾーンでピタリ止めろ。ゾーンは1/4→1/32に縮小。STOPボタンにはラグがある。',
+    color: 'text-neon-cyan',
+    glowColor: 'rgba(0,245,212,0.3)',
+    icon: '🎯',
+    href: '/games/spin-the-wheel',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'time-capsule',
+    name: 'MEMORY BUG',
+    subtitle: '記憶バグ',
+    description: '文章が2秒で消える。「さっきのはどれ？」選択肢は1文字違い。脳のキャッシュ: 0byte。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '🧠',
+    href: '/games/time-capsule',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'contrarian',
+    name: 'REVERSE CONTROL',
+    subtitle: '逆操作',
+    description: '矢印と逆方向を押せ。↑なら↓。1ミスで即死。Lv3で矢印が回転し始める。脳の配線: 逆接続。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🔄',
+    href: '/games/contrarian',
+    status: 'playable',
+    difficulty: '★★★★★',
+  },
+  {
+    id: 'speed-run',
+    name: 'BOMB DEFUSAL',
+    subtitle: '爆弾解除タイピング',
+    description: '危険なコマンドを正確にタイプして爆弾を解除しろ。1文字ミスで💥。ラウンドごとに文字がフェードアウトしていく。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '💣',
+    href: '/games/speed-run',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'chain-reaction',
+    name: 'CHAIN BOMB',
+    subtitle: '連鎖爆弾',
+    description: '1→2→3...と順番にタップ。間違えたら爆発。Lv3で数字が消えて位置記憶ゲーになる。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '💣',
+    href: '/games/chain-reaction',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'port-scanner',
+    name: 'PORT SCANNER',
+    subtitle: 'ポートスキャナー',
+    description: '一瞬だけOPENになるポートを叩け。ハニーポットに触れたら即死。60秒で何ポートスキャンできるか。',
+    color: 'text-neon-cyan',
+    glowColor: 'rgba(0,245,212,0.3)',
+    icon: '🔍',
+    href: '/games/port-scanner',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'password-breaker',
+    name: 'PASSWORD BREAKER',
+    subtitle: 'パスワードクラッカー',
+    description: '伏せ字のパスワードを推理しろ。ヒントは少しずつ開示。チャンスは1回。間違えたらアカウントロック。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🔐',
+    href: '/games/password-breaker',
+    status: 'playable',
+    difficulty: '★★★★★',
+  },
+  {
+    id: 'memory-leak',
+    name: 'MEMORY LEAK',
+    subtitle: 'メモリリーク',
+    description: 'メモリブロックが光る順番を記憶して再現しろ。グリッドがシャッフルされ、GCでブロックが消え、画面が赤く染まる。',
+    color: 'text-neon-cyan',
+    glowColor: 'rgba(0,245,212,0.3)',
+    icon: '🧠',
+    href: '/games/memory-leak',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'social-engineer',
+    name: 'SOCIAL ENGINEER',
+    subtitle: 'ソーシャルエンジニア',
+    description: '怪しい電話に5秒で対応しろ。間違えると情報が漏洩する。100%漏洩でCOMPROMISED。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '📞',
+    href: '/games/social-engineer',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+  {
+    id: 'firewall-dash',
+    name: 'FIREWALL DASH',
+    subtitle: 'ファイアウォール突破',
+    description: 'パケットを操作してファイアウォールの隙間を通り抜けろ。IDS追跡レーザーが容赦なく迫る。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '📦',
+    href: '/games/firewall-dash',
+    status: 'playable',
+    difficulty: '★★★★★',
+  },
+  {
+    id: 'captcha-hell',
+    name: 'CAPTCHA HELL',
+    subtitle: 'キャプチャ地獄',
+    description: 'お前がbotじゃないことを証明しろ。制限時間3秒。文字は歪み、回り、落ちる。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🤖',
+    href: '/games/captcha-hell',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'cookie-defense',
+    name: 'COOKIE DEFENSE',
+    subtitle: 'クッキー防衛戦',
+    description: 'Cookieを守れ。トラッカーが四方から迫る。ステルス敵、分裂敵。盗まれたらセッション終了。',
+    color: 'text-neon-cyan',
+    glowColor: 'rgba(0,245,212,0.3)',
+    icon: '🍪',
+    href: '/games/cookie-defense',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+  {
+    id: 'steady-hand',
+    name: 'STEADY HAND',
+    subtitle: '激カタ手ぶれ補正',
+    description: '線の上をなぞるだけ。ただしお前の手は震えている。パス幅8px、揺れ±15px。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '🫨',
+    href: '/games/steady-hand',
+    status: 'playable',
+    difficulty: '★★★★★',
+  },
+  {
+    id: 'brain-overflow',
+    name: 'BRAIN OVERFLOW',
+    subtitle: '脳キャパオーバー',
+    description: '左で計算、右で色判定。同時にやれ。brain.exe は応答していません。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🫠',
+    href: '/games/brain-overflow',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'color-blind',
+    name: 'COLOR BLIND',
+    subtitle: '色覚カオス',
+    description: '「赤」って書いてあるだろ。でもそれ、青だから。ボタンの色も嘘。脳のRGBケーブル断線。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '🎨',
+    href: '/games/color-blind',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+  {
+    id: 'microwave-master',
+    name: 'MICROWAVE MASTER',
+    subtitle: 'レンチン職人',
+    description: 'ちょうどいい温度で止めろ。1秒の狂いが爆発を生む。卵は一瞬で逝く。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🍱',
+    href: '/games/microwave-master',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+  {
+    id: 'notification-hell',
+    name: 'NOTIFICATION HELL',
+    subtitle: '通知地獄',
+    description: '全部の通知を処理しろ。既読スルーは許されない。母からの未読398件。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '🔔',
+    href: '/games/notification-hell',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'packet-panic',
+    name: 'PACKET PANIC',
+    subtitle: 'パケットパニック',
+    description: 'ALLOW/DENYパケットを左右スワイプで仕分けろ。偽装パケットに騙されるな。BUFFER OVERFLOW。',
+    color: 'text-neon-cyan',
+    glowColor: 'rgba(0,245,212,0.3)',
+    icon: '📦',
+    href: '/games/packet-panic',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+  {
+    id: 'auth-or-die',
+    name: 'AUTH OR DIE',
+    subtitle: '認証キメろ',
+    description: '正解は1つ。時間はない。微妙に違う鍵から正解を0.8秒で選べ。ACCESS DENIED。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🔑',
+    href: '/games/auth-or-die',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'noodle-catch',
+    name: 'NOODLE CATCH',
+    subtitle: '麺キャッチ',
+    description: '箸でつかめ。滑る。揺れる麺をタイミングよくキャッチ。コンニャクに騙されるな。',
+    color: 'text-neon-yellow',
+    glowColor: 'rgba(255,230,0,0.3)',
+    icon: '🍜',
+    href: '/games/noodle-catch',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+  {
+    id: 'elevator-hell',
+    name: 'ELEVATOR HELL',
+    subtitle: 'エレベーター地獄',
+    description: '目標階でピタリ止めろ。ブレーキには慣性がある。通り過ぎたら屋上を突き破る。',
+    color: 'text-neon-cyan',
+    glowColor: 'rgba(0,245,212,0.3)',
+    icon: '🛗',
+    href: '/games/elevator-hell',
+    status: 'playable',
+    difficulty: '★★★★',
+  },
+  {
+    id: 'toast-stack',
+    name: 'TOAST STACK',
+    subtitle: 'トースト積み',
+    description: '食パンをまっすぐ積め。バターで滑る。風で揺れる。積みゲーならぬ詰みゲー。',
+    color: 'text-neon-pink',
+    glowColor: 'rgba(255,45,120,0.3)',
+    icon: '🍞',
+    href: '/games/toast-stack',
+    status: 'playable',
+    difficulty: '★★★',
+  },
+];
+---
+
+<Layout title="ARCADE">
+  <Header />
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <div class="text-center mb-10">
+      <h1 class="font-['Orbitron'] text-3xl font-black tracking-wider mb-2">
+        <span class="text-neon-yellow">GAME</span> <span class="text-neon-pink">CENTER</span>
+      </h1>
+      <p class="text-text-secondary text-sm">筐体を選べ。逃げ場はない。</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {cabinets.map((cab) => (
+        <div class="group relative">
+          {cab.href ? (
+            <a href={cab.href} class="block">
+              <div
+                class="relative bg-bg-surface border border-bg-raised rounded-xl p-6 h-full transition-all duration-300 hover:border-current hover:shadow-[0_0_25px_var(--glow)]"
+                style={`--glow: ${cab.glowColor}`}
+              >
+                <div class="text-4xl mb-4">{cab.icon}</div>
+                <h2 class={`font-['Orbitron'] text-sm font-bold tracking-wider mb-1 ${cab.color}`}>
+                  {cab.name}
+                </h2>
+                <p class="text-text-primary text-xs mb-3">{cab.subtitle}</p>
+                <p class="text-text-secondary text-xs leading-relaxed mb-4">{cab.description}</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-neon-yellow text-xs">{cab.difficulty}</span>
+                  {highScoreMap[cab.id] ? (
+                    <span class="font-['Share_Tech_Mono'] text-[10px] text-neon-cyan">
+                      👑 {highScoreMap[cab.id].score} — {highScoreMap[cab.id].player}
+                    </span>
+                  ) : (
+                    <span class="font-['Orbitron'] text-[10px] text-neon-cyan tracking-widest animate-pulse">
+                      PRESS START
+                    </span>
+                  )}
+                </div>
+              </div>
+            </a>
+          ) : (
+            <div
+              class="relative bg-bg-surface/50 border border-bg-raised/50 rounded-xl p-6 h-full opacity-70"
+            >
+              <div class="text-4xl mb-4 grayscale">{cab.icon}</div>
+              <h2 class={`font-['Orbitron'] text-sm font-bold tracking-wider mb-1 text-text-muted`}>
+                {cab.name}
+              </h2>
+              <p class="text-text-muted text-xs mb-3">{cab.subtitle}</p>
+              <p class="text-text-muted text-xs leading-relaxed mb-4">{cab.description}</p>
+              <div class="flex items-center justify-between">
+                <span class="text-text-muted text-xs">{cab.difficulty}</span>
+                <span class="font-['Orbitron'] text-[10px] text-text-muted tracking-widest">
+                  COMING SOON
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <div class="text-center mt-12">
+      <p class="text-text-muted text-xs">
+        新筐体は順次解禁。焦るな、どうせ全部無理ゲーだ。
+      </p>
+    </div>
+  </main>
+</Layout>

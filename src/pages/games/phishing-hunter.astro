@@ -1,0 +1,10 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import PhishingHunter from '../../components/games/PhishingHunter';
+---
+
+<Layout title="Phishing Hunter">
+  <Header />
+  <PhishingHunter client:only="react" />
+</Layout>

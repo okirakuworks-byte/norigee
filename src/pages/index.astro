@@ -1,0 +1,30 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="ノリゲー">
+  <main class="flex flex-col items-center justify-center min-h-screen px-4">
+    <div class="text-center">
+      <h1 class="font-['Orbitron'] text-6xl font-black tracking-wider mb-4">
+        <span class="text-neon-yellow">NORI</span><span class="text-neon-pink">GEE</span>
+      </h1>
+      <p class="text-text-secondary text-xl mb-2">
+        無理ゲーをノリで楽しむ
+      </p>
+      <p class="text-text-muted text-sm mb-12">
+        見た目はポップ、中身は地獄。
+      </p>
+
+      <a
+        href="/auth/login"
+        class="inline-block px-8 py-4 bg-neon-yellow text-bg-deep font-['Orbitron'] font-bold text-lg rounded-lg hover:shadow-[0_0_30px_rgba(255,230,0,0.5)] transition-shadow duration-300"
+      >
+        INSERT COIN
+      </a>
+
+      <p class="text-text-muted text-xs mt-6">
+        Google アカウントでログイン
+      </p>
+    </div>
+  </main>
+</Layout>

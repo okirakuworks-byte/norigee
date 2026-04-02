@@ -1,0 +1,10 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import MemoryLeak from '../../components/games/MemoryLeak';
+---
+
+<Layout title="MEMORY LEAK">
+  <Header />
+  <MemoryLeak client:only="react" />
+</Layout>

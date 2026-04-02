@@ -1,0 +1,32 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import PostForm from '../../components/PostForm';
+import { createSupabaseServer } from '../../lib/supabase';
+
+const supabase = createSupabaseServer(Astro);
+// Auth guard: must be logged in to post
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) {
+  return Astro.redirect('/auth/login');
+}
+
+const dailyId = Astro.url.searchParams.get('daily');
+const challengeTitle = dailyId ? 'デイリーノリゲー' : undefined;
+---
+
+<Layout title="INSERT COIN">
+  <Header />
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <h1 class="font-['Orbitron'] text-2xl font-bold text-center mb-8">
+      <span class="text-neon-yellow">INSERT</span> <span class="text-text-primary">COIN</span>
+    </h1>
+
+    <PostForm
+      challengeTitle={challengeTitle}
+      dailyId={dailyId ? Number(dailyId) : undefined}
+      client:load
+    />
+  </main>
+</Layout>
