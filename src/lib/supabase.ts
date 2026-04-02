@@ -14,10 +14,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /** Simple anon client for non-auth data queries (used by api.ts) */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-/** Browser-side client (used in <script> tags) — stores auth in cookies */
+/** Browser-side client (used in <script> tags) */
 export function createSupabaseBrowser() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    auth: { flowType: 'pkce' },
+    auth: { flowType: 'implicit' },
   });
 }
 
