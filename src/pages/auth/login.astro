@@ -35,12 +35,6 @@ import Layout from '../../layouts/Layout.astro';
 
   const supabase = createSupabaseBrowser();
 
-  // Redirect to home if already logged in
-  const { data: { user: existingUser } } = await supabase.auth.getUser();
-  if (existingUser) {
-    window.location.replace('/home');
-  }
-
   document.getElementById('github-login')?.addEventListener('click', async (e) => {
     e.preventDefault();
     const { error } = await supabase.auth.signInWithOAuth({
