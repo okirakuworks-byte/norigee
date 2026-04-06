@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
+import { createSupabaseBrowser } from '../../lib/supabase';
+
+const supabase = createSupabaseBrowser();
 
 interface ScreamPost {
   id: number;
@@ -66,7 +68,7 @@ function CommentList({ gameId }: { gameId: string }) {
         transition={{ duration: posts.length * 3, repeat: Infinity, ease: 'linear' }}
         className="space-y-1"
       >
-        {[...posts, ...posts].map((post, i) => {
+        {(posts.length > 2 ? [...posts, ...posts] : posts).map((post, i) => {
           const scream = extractScream(post.content);
           const scoreVal = extractScore(post.content);
           const name = (post.profiles as { display_name: string })?.display_name ?? '?';

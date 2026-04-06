@@ -2,11 +2,12 @@
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import AdminGuard from '../../components/admin/AdminGuard';
-import UserManager from '../../components/admin/UserManager';
+import TopicManager from '../../components/admin/TopicManager';
 ---
 
-<Layout title="ADMIN - Users">
+<Layout title="ADMIN - Topics">
   <Header />
+
   <main class="max-w-5xl mx-auto px-4 py-6">
     <div class="flex items-center justify-between mb-6">
       <h1 class="font-['Orbitron'] text-xl font-bold">
@@ -14,13 +15,14 @@ import UserManager from '../../components/admin/UserManager';
       </h1>
       <div class="flex gap-4 text-xs">
         <a href="/admin" class="text-text-muted hover:text-text-primary transition-colors">ダッシュボード</a>
-        <a href="/admin/topics" class="text-text-muted hover:text-text-primary transition-colors">お題管理</a>
-        <a href="/admin/users" class="text-neon-yellow border-b border-neon-yellow pb-1">ユーザー</a>
+        <a href="/admin/topics" class="text-neon-yellow border-b border-neon-yellow pb-1">お題管理</a>
+        <a href="/admin/users" class="text-text-muted hover:text-text-primary transition-colors">ユーザー</a>
         <a href="/admin/moderation" class="text-text-muted hover:text-text-primary transition-colors">モデレーション</a>
       </div>
     </div>
+
     <AdminGuard client:load>
-      <UserManager client:load />
+      <TopicManager client:load />
     </AdminGuard>
   </main>
 </Layout>

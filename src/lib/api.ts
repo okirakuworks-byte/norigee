@@ -1,4 +1,6 @@
-import { supabase } from './supabase';
+import { createSupabaseBrowser } from './supabase';
+
+const supabase = createSupabaseBrowser();
 import type { FeedPost, DailyTopic, ResonanceType, Participation } from './types';
 
 // ===== Image Upload =====
@@ -27,41 +29,119 @@ export interface Comment {
   id: number;
   content: string;
   created_at: string;
-  profiles: { display_name: string; avatar_url: string | null };
+  profiles: { display_name: string; avatar_url: string | null; avatar_emoji: string | null };
 }
 
 export async function fetchComments(postId: number): Promise<Comment[]> {
   const { data } = await supabase
     .from('comments')
-    .select('id, content, created_at, profiles!comments_user_id_fkey(display_name, avatar_url)')
+    .select('id, content, created_at, profiles!comments_user_id_fkey(display_name, avatar_url, avatar_emoji)')
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
     .limit(50);
 
-  return (data ?? []) as unknown as Comment[];
+  if (!data) return [];
+  return data.map((row) => {
+    const profiles = row.profiles as unknown as { display_name: string; avatar_url: string | null; avatar_emoji: string | null } | null;
+    return {
+      id: row.id,
+      content: row.content,
+      created_at: row.created_at,
+      profiles: profiles ?? { display_name: '?', avatar_url: null, avatar_emoji: null },
+    };
+  });
 }
 
 export type { FeedPost, DailyTopic };
 
-export async function fetchFeed(cursor?: number, limit = 20): Promise<{ posts: FeedPost[]; nextCursor: number | null }> {
-  let query = supabase
+/** Fetch a single post by ID (for detail page) */
+export async function fetchPostById(postId: number): Promise<FeedPost | null> {
+  const { data, error } = await supabase
     .from('posts')
     .select(`
       id, content, result, day_number, posted_at,
       resonance_count, comment_count, image_keys, is_hidden,
-      profiles!posts_user_id_fkey (username, display_name, avatar_url),
+      profiles!posts_user_id_fkey (username, display_name, avatar_url, avatar_emoji),
       participations!posts_participation_id_fkey (
         challenge_type,
         daily_topics (title),
         my_challenges (title)
       )
     `)
-    .eq('is_hidden', false)
-    .order('id', { ascending: false })
-    .limit(limit);
+    .eq('id', postId)
+    .maybeSingle();
 
-  if (cursor) {
-    query = query.lt('id', cursor);
+  if (error || !data) return null;
+
+  const row = data as Record<string, unknown>;
+  const participation = row.participations as Record<string, unknown> | null;
+  const dailyTopics = participation?.daily_topics as Record<string, unknown> | null;
+  const myChallenges = participation?.my_challenges as Record<string, unknown> | null;
+  const profiles = row.profiles as Record<string, unknown>;
+
+  return {
+    id: row.id as number,
+    content: row.content as string,
+    result: row.result as 'success' | 'failure',
+    day_number: row.day_number as number,
+    posted_at: row.posted_at as string,
+    resonance_count: row.resonance_count as number,
+    comment_count: row.comment_count as number,
+    image_keys: (row.image_keys as string[]) ?? [],
+    profiles: {
+      username: profiles.username as string,
+      display_name: profiles.display_name as string,
+      avatar_url: profiles.avatar_url as string | null,
+      avatar_emoji: (profiles.avatar_emoji as string | null) ?? null,
+    },
+    challenge_type: participation?.challenge_type as 'daily' | 'my' | undefined,
+    challenge_title:
+      participation?.challenge_type === 'daily'
+        ? (dailyTopics?.title as string)
+        : (myChallenges?.title as string),
+  };
+}
+
+export type FeedSortOrder = 'new' | 'hot';
+
+/**
+ * Fetch feed posts.
+ * - NEW mode: cursor-based pagination (cursor = last post ID)
+ * - HOT mode: offset-based pagination (cursor = offset number)
+ */
+export async function fetchFeed(
+  cursor?: number,
+  limit = 20,
+  order: FeedSortOrder = 'new'
+): Promise<{ posts: FeedPost[]; nextCursor: number | null }> {
+  let query = supabase
+    .from('posts')
+    .select(`
+      id, content, result, day_number, posted_at,
+      resonance_count, comment_count, image_keys, is_hidden,
+      profiles!posts_user_id_fkey (username, display_name, avatar_url, avatar_emoji),
+      participations!posts_participation_id_fkey (
+        challenge_type,
+        daily_topics (title),
+        my_challenges (title)
+      )
+    `)
+    .eq('is_hidden', false);
+
+  if (order === 'hot') {
+    query = query
+      .order('resonance_count', { ascending: false })
+      .order('id', { ascending: false });
+    // HOT: offset-based pagination
+    const offset = cursor ?? 0;
+    query = query.range(offset, offset + limit - 1);
+  } else {
+    query = query.order('id', { ascending: false });
+    query = query.limit(limit);
+    // NEW: cursor-based pagination
+    if (cursor) {
+      query = query.lt('id', cursor);
+    }
   }
 
   const { data, error } = await query;
@@ -89,6 +169,7 @@ export async function fetchFeed(cursor?: number, limit = 20): Promise<{ posts: F
         username: profiles.username as string,
         display_name: profiles.display_name as string,
         avatar_url: profiles.avatar_url as string | null,
+        avatar_emoji: (profiles.avatar_emoji as string | null) ?? null,
       },
       challenge_type: participation?.challenge_type as 'daily' | 'my' | undefined,
       challenge_title:
@@ -98,7 +179,15 @@ export async function fetchFeed(cursor?: number, limit = 20): Promise<{ posts: F
     };
   });
 
-  const nextCursor = posts.length === limit ? posts[posts.length - 1].id : null;
+  // nextCursor: for NEW mode = last post ID, for HOT mode = next offset
+  let nextCursor: number | null = null;
+  if (posts.length === limit) {
+    if (order === 'hot') {
+      nextCursor = (cursor ?? 0) + limit;
+    } else {
+      nextCursor = posts[posts.length - 1].id;
+    }
+  }
   return { posts, nextCursor };
 }
 
@@ -121,19 +210,34 @@ export async function toggleResonance(postId: number, type: ResonanceType) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'not authenticated' };
 
+  // Check for existing resonance (any type) on this post
   const { data: existing } = await supabase
     .from('resonances')
-    .select('id')
+    .select('id, type')
     .eq('post_id', postId)
     .eq('user_id', user.id)
     .maybeSingle();
 
   if (existing) {
-    const { error } = await supabase.from('resonances').delete().eq('id', existing.id);
-    if (error) return { error: error.message };
-    return { action: 'removed' as const };
+    // Same type → toggle off (remove)
+    if (existing.type === type) {
+      const { error } = await supabase.from('resonances').delete().eq('id', existing.id);
+      if (error) return { error: error.message };
+      return { action: 'removed' as const };
+    }
+
+    // Different type → switch (delete old, insert new)
+    const { error: delErr } = await supabase.from('resonances').delete().eq('id', existing.id);
+    if (delErr) return { error: delErr.message };
+
+    const { error: insErr } = await supabase
+      .from('resonances')
+      .insert({ post_id: postId, user_id: user.id, type });
+    if (insErr) return { error: insErr.message };
+    return { action: 'switched' as const, previousType: existing.type as ResonanceType };
   }
 
+  // No existing → add new
   const { error } = await supabase
     .from('resonances')
     .insert({ post_id: postId, user_id: user.id, type });
@@ -159,6 +263,53 @@ export async function fetchResonancesForPost(postId: number) {
   }
 
   return { counts, userTypes };
+}
+
+export type ResonanceCounts = Record<ResonanceType, number>;
+
+export interface BulkResonanceResult {
+  counts: Map<number, ResonanceCounts>;
+  /** Map of post_id → user's resonance type (null if user hasn't reacted) */
+  myResonances: Map<number, ResonanceType | null>;
+}
+
+/** Bulk fetch resonance counts + current user's resonances for multiple posts (avoids N+1) */
+export async function fetchResonancesForPosts(
+  postIds: number[]
+): Promise<BulkResonanceResult> {
+  const counts = new Map<number, ResonanceCounts>();
+  const myResonances = new Map<number, ResonanceType | null>();
+  if (postIds.length === 0) return { counts, myResonances };
+
+  const { data } = await supabase
+    .from('resonances')
+    .select('post_id, type, user_id')
+    .in('post_id', postIds);
+
+  // Get current user ID
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id;
+
+  // Initialize all posts
+  for (const id of postIds) {
+    counts.set(id, { wakaru: 0, donmai: 0, oremoda: 0 });
+    myResonances.set(id, null);
+  }
+
+  if (data) {
+    for (const r of data) {
+      const postCounts = counts.get(r.post_id as number);
+      if (postCounts) {
+        postCounts[r.type as ResonanceType]++;
+      }
+      // Track current user's resonance
+      if (currentUserId && r.user_id === currentUserId) {
+        myResonances.set(r.post_id as number, r.type as ResonanceType);
+      }
+    }
+  }
+
+  return { counts, myResonances };
 }
 
 export async function addComment(postId: number, content: string) {
@@ -362,8 +513,21 @@ export async function postGameScore(
   };
 }
 
+export interface LeaderboardEntry {
+  score: number;
+  level: number;
+  death_reason: string | null;
+  created_at: string;
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
 /** Fetch leaderboard for a game */
-export async function fetchLeaderboard(gameId: string, limit = 10) {
+export async function fetchLeaderboard(
+  gameId: string,
+  limit = 10
+): Promise<{ scores: LeaderboardEntry[] }> {
   const { data, error } = await supabase
     .from('game_scores')
     .select('score, level, death_reason, created_at, user_id, profiles!game_scores_user_id_fkey(display_name, avatar_url)')
@@ -371,8 +535,22 @@ export async function fetchLeaderboard(gameId: string, limit = 10) {
     .order('score', { ascending: false })
     .limit(limit);
 
-  if (error) return { scores: [] };
-  return { scores: data ?? [] };
+  if (error || !data) return { scores: [] };
+
+  const scores: LeaderboardEntry[] = data.map((row) => {
+    const profiles = row.profiles as unknown as { display_name: string; avatar_url: string | null } | null;
+    return {
+      score: row.score as number,
+      level: row.level as number,
+      death_reason: row.death_reason as string | null,
+      created_at: row.created_at as string,
+      user_id: row.user_id as string,
+      display_name: profiles?.display_name ?? '?',
+      avatar_url: profiles?.avatar_url ?? null,
+    };
+  });
+
+  return { scores };
 }
 
 /** Fetch user's best score for a game */
@@ -390,4 +568,82 @@ export async function fetchMyBestScore(gameId: string) {
     .maybeSingle();
 
   return data;
+}
+
+// ===== My Challenges =====
+
+import type { MyChallenge } from './types';
+
+/** Create a new personal challenge */
+export async function createMyChallenge(
+  title: string,
+  description: string | null,
+  isPublic: boolean
+): Promise<{ data?: MyChallenge; error?: string }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'not authenticated' };
+
+  const { data, error } = await supabase
+    .from('my_challenges')
+    .insert({
+      owner_id: user.id,
+      title: title.trim(),
+      description: description?.trim() || null,
+      is_public: isPublic,
+      tags: [],
+    })
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+  return { data: data as MyChallenge };
+}
+
+/** Fetch user's own challenges */
+export async function fetchMyChallenges(): Promise<MyChallenge[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('my_challenges')
+    .select('*')
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: false });
+
+  return (data ?? []) as MyChallenge[];
+}
+
+/** Fetch user's active participations (for post form selection) */
+export async function fetchMyParticipations(): Promise<Array<{
+  id: number;
+  challenge_type: 'daily' | 'my';
+  day_count: number;
+  title: string;
+}>> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('participations')
+    .select(`
+      id, challenge_type, day_count,
+      daily_topics (title),
+      my_challenges (title)
+    `)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .order('last_posted_at', { ascending: false });
+
+  if (!data) return [];
+
+  return data.map((row) => {
+    const dt = row.daily_topics as unknown as { title: string } | null;
+    const mc = row.my_challenges as unknown as { title: string } | null;
+    return {
+      id: row.id as number,
+      challenge_type: row.challenge_type as 'daily' | 'my',
+      day_count: row.day_count as number,
+      title: (row.challenge_type === 'daily' ? dt?.title : mc?.title) ?? '不明なチャレンジ',
+    };
+  });
 }

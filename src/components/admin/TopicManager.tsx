@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
+import { createSupabaseBrowser } from '../../lib/supabase';
+
+const supabase = createSupabaseBrowser();
 import type { DailyTopic } from '../../lib/types';
 
 export default function TopicManager() {

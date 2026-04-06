@@ -1,0 +1,22 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import ChallengeCreateForm from '../../components/ChallengeCreateForm';
+---
+
+<Layout title="NEW CHALLENGE">
+  <Header />
+
+  <div id="auth-loading" class="hidden flex items-center justify-center py-20">
+    <p class="font-['Orbitron'] text-text-muted text-sm animate-pulse tracking-widest">LOADING...</p>
+  </div>
+
+  <main class="max-w-5xl mx-auto px-4 py-8" style="opacity:0;transition:opacity 0.2s">
+    <ChallengeCreateForm client:load />
+  </main>
+</Layout>
+
+<script>
+  import { requireProfile } from '../../lib/authGuard';
+  requireProfile();
+</script>

@@ -8,11 +8,14 @@
     </a>
 
     <nav class="flex items-center gap-4">
-      <a href="/home" class="text-text-secondary hover:text-text-primary text-sm transition-colors">
+      <a href="/home" class="hidden md:inline text-text-secondary hover:text-text-primary text-sm transition-colors">
         FEED
       </a>
-      <a href="/games" class="text-text-secondary hover:text-neon-cyan text-sm transition-colors">
+      <a href="/games" class="hidden md:inline text-text-secondary hover:text-neon-cyan text-sm transition-colors">
         GAMES
+      </a>
+      <a id="admin-link" href="/admin" class="hidden text-neon-pink hover:text-neon-pink/80 text-sm transition-colors font-bold">
+        ADMIN
       </a>
 
       {/* Default: logged-out state */}
@@ -33,7 +36,7 @@
           🔔
           <span id="notif-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-neon-pink text-bg-deep text-[8px] font-bold rounded-full flex items-center justify-center">0</span>
         </button>
-        <div id="notif-dropdown" class="hidden absolute right-16 top-12 w-72 bg-bg-surface border border-bg-raised rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
+        <div id="notif-dropdown" class="hidden absolute right-0 top-12 w-72 max-w-[calc(100vw-2rem)] bg-bg-surface border border-bg-raised rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
           <div class="px-3 py-2 border-b border-bg-raised flex items-center justify-between">
             <span class="font-['Orbitron'] text-[10px] text-text-muted">NOTIFICATIONS</span>
             <button id="notif-read-all" class="text-neon-cyan text-[10px] hover:underline">全て既読</button>
@@ -42,33 +45,106 @@
           <div id="notif-empty" class="hidden px-3 py-4 text-center text-text-muted text-xs">通知なし</div>
         </div>
         <div class="flex items-center gap-2">
-          <img id="user-avatar" src="" alt="" class="hidden w-7 h-7 rounded-full" />
-          <div id="user-avatar-fallback" class="w-7 h-7 rounded-full bg-bg-raised flex items-center justify-center text-xs text-text-muted">?</div>
-          <span id="user-display-name" class="text-text-secondary text-xs hidden md:inline">Player</span>
-          <button id="logout-btn" class="text-text-muted hover:text-neon-pink text-xs transition-colors ml-1" title="ログアウト">✕</button>
+          <a href="/profile/edit" class="flex items-center gap-2 hover:opacity-80 transition-opacity" title="プロフィール編集">
+            <img id="user-avatar" src="" alt="" class="hidden w-7 h-7 rounded-full" />
+            <div id="user-avatar-emoji" class="w-7 h-7 rounded-full bg-bg-raised flex items-center justify-center text-sm">?</div>
+            <span id="user-display-name" class="text-text-secondary text-xs hidden md:inline">Player</span>
+          </a>
+          <button id="logout-btn" class="text-text-muted hover:text-neon-pink hover:bg-neon-pink/10 text-xs transition-colors ml-1 px-1.5 py-1 rounded" title="ログアウト" aria-label="ログアウト">✕</button>
         </div>
       </div>
     </nav>
   </div>
 </header>
 
+{/* Mobile bottom nav */}
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-bg-deep/95 backdrop-blur-md border-t border-bg-raised">
+  <div class="flex items-center justify-around h-12" id="mobile-nav">
+    <a href="/home" data-nav="home" class="flex flex-col items-center gap-0.5 text-text-muted transition-colors">
+      <span class="text-base">🏠</span>
+      <span class="text-[8px] font-['Orbitron']">FEED</span>
+    </a>
+    <a href="/games" data-nav="games" class="flex flex-col items-center gap-0.5 text-text-muted transition-colors">
+      <span class="text-base">🕹️</span>
+      <span class="text-[8px] font-['Orbitron']">GAMES</span>
+    </a>
+    <a href="/posts/new" data-nav="posts" class="flex flex-col items-center gap-0.5 text-text-muted transition-colors">
+      <span class="text-lg">⊕</span>
+      <span class="text-[8px] font-['Orbitron']">POST</span>
+    </a>
+    <a href="/lottery" data-nav="lottery" class="flex flex-col items-center gap-0.5 text-text-muted transition-colors">
+      <span class="text-base">🎰</span>
+      <span class="text-[8px] font-['Orbitron']">GACHA</span>
+    </a>
+    <a href="/profile/edit" data-nav="profile" class="flex flex-col items-center gap-0.5 text-text-muted transition-colors">
+      <span class="text-base">👤</span>
+      <span class="text-[8px] font-['Orbitron']">ME</span>
+    </a>
+  </div>
+</nav>
+
+<script>
+  // Mobile nav active state
+  const path = window.location.pathname;
+  const navMap: Record<string, string> = {
+    '/home': 'home',
+    '/games': 'games',
+    '/posts/new': 'posts',
+    '/lottery': 'lottery',
+    '/profile/edit': 'profile',
+    '/profile/setup': 'profile',
+  };
+  const activeNav = Object.entries(navMap).find(([prefix]) => path.startsWith(prefix))?.[1];
+  if (activeNav) {
+    const activeEl = document.querySelector(`[data-nav="${activeNav}"]`);
+    if (activeEl) {
+      activeEl.classList.remove('text-text-muted');
+      const colors: Record<string, string> = {
+        home: 'text-neon-yellow',
+        games: 'text-neon-cyan',
+        posts: 'text-neon-yellow',
+        lottery: 'text-neon-pink',
+        profile: 'text-neon-cyan',
+      };
+      activeEl.classList.add(colors[activeNav] ?? 'text-neon-yellow');
+    }
+  }
+</script>
+
 <script>
   import { createSupabaseBrowser } from '../lib/supabase';
-  import { supabase } from '../lib/supabase';
+  import { claimLoginBonus } from '../lib/wallet';
+  import type { User } from '@supabase/supabase-js';
 
-  // Show logged-in UI if authenticated
-  async function initHeader() {
+  const supabase = createSupabaseBrowser();
+
+  // ============================================
+  // Single getUser() call — cached for all functions
+  // ============================================
+  let cachedUser: User | null = null;
+
+  async function getAuthUser(): Promise<User | null> {
+    if (cachedUser) return cachedUser;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    cachedUser = user;
+    return user;
+  }
 
-    // Fetch profile
+  // ============================================
+  // Init header UI
+  // ============================================
+  async function initHeader(user: User) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name, avatar_url')
+      .select('display_name, avatar_url, avatar_emoji')
       .eq('id', user.id)
       .maybeSingle();
 
-    // Swap login link for user nav
+    if (!profile) {
+      window.location.replace('/profile/setup');
+      return;
+    }
+
     document.getElementById('login-link')?.classList.add('hidden');
     const userNav = document.getElementById('user-nav');
     if (userNav) {
@@ -76,31 +152,43 @@
       userNav.classList.add('flex', 'items-center', 'gap-4');
     }
 
-    // Update avatar and display name
-    if (profile?.avatar_url) {
-      const avatarImg = document.getElementById('user-avatar') as HTMLImageElement | null;
+    const avatarImg = document.getElementById('user-avatar') as HTMLImageElement | null;
+    const avatarEmoji = document.getElementById('user-avatar-emoji');
+    if (profile.avatar_url) {
       if (avatarImg) {
         avatarImg.src = profile.avatar_url;
         avatarImg.classList.remove('hidden');
       }
-      document.getElementById('user-avatar-fallback')?.classList.add('hidden');
+      avatarEmoji?.classList.add('hidden');
+    } else if (profile.avatar_emoji && avatarEmoji) {
+      avatarEmoji.textContent = profile.avatar_emoji;
     }
+
     const nameEl = document.getElementById('user-display-name');
     if (nameEl) {
-      nameEl.textContent = profile?.display_name ?? 'Player';
+      nameEl.textContent = profile.display_name;
+    }
+
+    const { data: admin } = await supabase
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (admin) {
+      document.getElementById('admin-link')?.classList.remove('hidden');
     }
   }
 
-  initHeader();
-
   // Logout
   document.getElementById('logout-btn')?.addEventListener('click', async () => {
-    const sb = createSupabaseBrowser();
-    await sb.auth.signOut();
+    await supabase.auth.signOut();
     window.location.href = '/auth/login';
   });
 
+  // ============================================
   // Notifications
+  // ============================================
   const badge = document.getElementById('notif-badge');
   const dropdown = document.getElementById('notif-dropdown');
   const listEl = document.getElementById('notif-list');
@@ -108,9 +196,14 @@
   const btn = document.getElementById('notif-btn');
   const readAllBtn = document.getElementById('notif-read-all');
 
-  function renderNotification(n: { type: string; is_read: boolean; created_at: string; profiles?: { display_name: string } }) {
-    const div = document.createElement('div');
-    div.className = `px-3 py-2 ${n.is_read ? 'opacity-50' : ''} hover:bg-bg-raised/50`;
+  function renderNotification(n: { type: string; is_read: boolean; created_at: string; post_id?: number; profiles?: { display_name: string } }) {
+    const wrapper = n.post_id
+      ? document.createElement('a') as HTMLAnchorElement
+      : document.createElement('div');
+    if (n.post_id && wrapper instanceof HTMLAnchorElement) {
+      wrapper.href = `/posts/view?id=${n.post_id}`;
+    }
+    wrapper.className = `block px-3 py-2 ${n.is_read ? 'opacity-50' : ''} hover:bg-bg-raised/50 cursor-pointer transition-colors`;
     const actor = n.profiles?.display_name ?? '?';
     const typeLabel = n.type === 'resonance' ? '🤝 共鳴' : n.type === 'comment' ? '💬 コメント' : '🔔';
     const time = new Date(n.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
@@ -120,14 +213,13 @@
     const p2 = document.createElement('p');
     p2.className = 'text-[10px] text-text-muted';
     p2.textContent = time;
-    div.appendChild(p1);
-    div.appendChild(p2);
-    return div;
+    wrapper.appendChild(p1);
+    wrapper.appendChild(p2);
+    return wrapper;
   }
 
-  async function loadNotifications() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !listEl || !badge || !emptyEl) return;
+  async function loadNotifications(user: User) {
+    if (!listEl || !badge || !emptyEl) return;
 
     const { data: notifs } = await supabase
       .from('notifications')
@@ -153,37 +245,35 @@
     }
     emptyEl.classList.add('hidden');
     for (const n of notifs) {
-      listEl.appendChild(renderNotification(n as unknown as Parameters<typeof renderNotification>[0]));
+      const notif = n as unknown as Parameters<typeof renderNotification>[0];
+      listEl.appendChild(renderNotification(notif));
     }
   }
 
-  btn?.addEventListener('click', (e) => { e.stopPropagation(); dropdown?.classList.toggle('hidden'); loadNotifications(); });
+  btn?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    dropdown?.classList.toggle('hidden');
+    const user = await getAuthUser();
+    if (user) loadNotifications(user);
+  });
   document.addEventListener('click', () => dropdown?.classList.add('hidden'));
   dropdown?.addEventListener('click', (e) => e.stopPropagation());
 
   readAllBtn?.addEventListener('click', async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) return;
     await supabase.from('notifications').update({ is_read: true }).eq('recipient_id', user.id).eq('is_read', false);
-    loadNotifications();
+    loadNotifications(user);
   });
 
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
-  if (currentUser) {
-    supabase.channel('my-notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${currentUser.id}` }, () => loadNotifications())
-      .subscribe();
-  }
-  loadNotifications();
-
+  // ============================================
   // Wallet balance
-  async function loadBalance() {
-    const { data: { user: u } } = await supabase.auth.getUser();
-    if (!u) return;
+  // ============================================
+  async function loadBalance(user: User) {
     const { data: wallet } = await supabase
       .from('wallets')
       .select('balance')
-      .eq('user_id', u.id)
+      .eq('user_id', user.id)
       .maybeSingle();
     const creditEl = document.getElementById('credit-display');
     if (creditEl && wallet) {
@@ -194,44 +284,30 @@
       }
     }
   }
-  loadBalance();
 
-  // Auto-claim login bonus
-  async function claimLogin() {
-    const { data: { user: u } } = await supabase.auth.getUser();
-    if (!u) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: counter } = await supabase
-      .from('daily_action_counters')
-      .select('login_claimed')
-      .eq('user_id', u.id)
-      .eq('action_date', today)
-      .maybeSingle();
-    if (counter?.login_claimed) return;
-    await supabase.from('daily_action_counters').upsert(
-      { user_id: u.id, action_date: today, login_claimed: true },
-      { onConflict: 'user_id,action_date' }
-    );
-    const { data: w } = await supabase.from('wallets').select('balance').eq('user_id', u.id).single();
-    if (!w) return;
-    const nb = w.balance + 100;
-    await supabase.from('wallets').update({ balance: nb, updated_at: new Date().toISOString() }).eq('user_id', u.id);
-    await supabase.from('coin_transactions').insert({
-      user_id: u.id, amount: 100, balance_after: nb, tx_type: 'daily_login', description: 'デイリーログインボーナス \u00A5100'
-    });
-    loadBalance();
+  // ============================================
+  // Auto-claim login bonus (via wallet.ts)
+  // ============================================
+  async function claimLogin(user: User) {
+    try {
+      const result = await claimLoginBonus();
+      if (result.claimed) {
+        loadBalance(user);
+      }
+    } catch {
+      // Silently fail — login bonus is non-critical
+    }
   }
-  claimLogin();
 
+  // ============================================
   // Lottery badge
-  async function checkLottery() {
-    const { data: { user: u } } = await supabase.auth.getUser();
-    if (!u) return;
+  // ============================================
+  async function checkLottery(user: User) {
     const today = new Date().toISOString().slice(0, 10);
     const { data: counter } = await supabase
       .from('daily_action_counters')
       .select('lottery_drawn')
-      .eq('user_id', u.id)
+      .eq('user_id', user.id)
       .eq('action_date', today)
       .maybeSingle();
     const lotteryBadge = document.getElementById('lottery-badge');
@@ -239,5 +315,30 @@
       lotteryBadge.classList.remove('hidden');
     }
   }
-  checkLottery();
+
+  // ============================================
+  // Bootstrap: single getUser() → run all init
+  // ============================================
+  async function bootstrap() {
+    const user = await getAuthUser();
+    if (!user) return;
+
+    await initHeader(user);
+    loadNotifications(user);
+    loadBalance(user);
+    claimLogin(user);
+    checkLottery(user);
+
+    // Realtime notifications subscription
+    supabase.channel('my-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `recipient_id=eq.${user.id}`,
+      }, () => loadNotifications(user))
+      .subscribe();
+  }
+
+  bootstrap();
 </script>

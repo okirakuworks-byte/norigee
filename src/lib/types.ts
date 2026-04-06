@@ -5,6 +5,7 @@ export interface Profile {
   username: string;
   display_name: string;
   avatar_url: string | null;
+  avatar_emoji: string | null;
   bio: string | null;
 }
 
@@ -54,6 +55,7 @@ export interface FeedPost {
     username: string;
     display_name: string;
     avatar_url: string | null;
+    avatar_emoji: string | null;
   };
   challenge_title?: string;
   challenge_type?: 'daily' | 'my';
@@ -79,5 +81,6 @@ export interface Comment {
     username: string;
     display_name: string;
     avatar_url: string | null;
+    avatar_emoji: string | null;
   };
 }

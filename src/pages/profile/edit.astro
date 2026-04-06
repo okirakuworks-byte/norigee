@@ -1,0 +1,54 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import ProfileSetupForm from '../../components/ProfileSetupForm';
+---
+
+<Layout title="プロフィール編集">
+  <Header />
+  <main class="max-w-5xl mx-auto px-4 py-6">
+    <div id="edit-loading" class="flex items-center justify-center py-20">
+      <p class="font-['Orbitron'] text-text-muted animate-pulse">LOADING...</p>
+    </div>
+    <div id="edit-form" class="hidden">
+      <ProfileSetupForm client:load userId="" isEdit={true} />
+    </div>
+  </main>
+</Layout>
+
+<script>
+  import { createSupabaseBrowser } from '../../lib/supabase';
+
+  const supabase = createSupabaseBrowser();
+
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      window.location.replace('/auth/login');
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, display_name, avatar_emoji, bio')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      window.location.replace('/profile/setup');
+      return;
+    }
+
+    document.getElementById('edit-loading')?.classList.add('hidden');
+    document.getElementById('edit-form')?.classList.remove('hidden');
+
+    window.dispatchEvent(new CustomEvent('norigee:edit-profile', {
+      detail: {
+        userId: user.id,
+        existingProfile: profile,
+      }
+    }));
+  }
+
+  init();
+</script>

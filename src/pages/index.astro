@@ -3,27 +3,84 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout title="ノリゲー">
-  <main class="flex flex-col items-center justify-center min-h-screen px-4">
-    <div class="text-center">
-      <h1 class="font-['Orbitron'] text-6xl font-black tracking-wider mb-4">
+  <main class="min-h-screen arcade-grid-bg flex flex-col items-center justify-center px-4 py-16">
+    {/* Hero section */}
+    <div class="text-center mb-16">
+      <h1
+        class="font-['Orbitron'] text-6xl md:text-7xl font-black tracking-wider mb-4 text-glow-yellow"
+      >
         <span class="text-neon-yellow">NORI</span><span class="text-neon-pink">GEE</span>
       </h1>
       <p class="text-text-secondary text-xl mb-2">
         無理ゲーをノリで楽しむ
       </p>
-      <p class="text-text-muted text-sm mb-12">
+      <p class="text-text-muted text-sm mb-10">
         見た目はポップ、中身は地獄。
       </p>
 
+      {/* Value proposition */}
+      <div class="space-y-3 mb-12 max-w-xs mx-auto text-left border-l-2 border-neon-yellow/40 pl-4">
+        <p class="text-text-secondary text-sm">💀 無理なチャレンジに毎日挑む</p>
+        <p class="text-text-secondary text-sm">🤝 失敗を「わかる」で称え合う</p>
+        <p class="text-text-secondary text-sm">🎮 コインを稼いでゲームで遊ぶ</p>
+      </div>
+
       <a
         href="/auth/login"
-        class="inline-block px-8 py-4 bg-neon-yellow text-bg-deep font-['Orbitron'] font-bold text-lg rounded-lg hover:shadow-[0_0_30px_rgba(255,230,0,0.5)] transition-shadow duration-300"
+        class="inline-block px-10 py-4 bg-neon-yellow text-bg-deep font-['Orbitron'] font-bold text-lg rounded-lg neon-glow-yellow hover:shadow-[0_0_40px_rgba(255,230,0,0.6)] transition-shadow duration-300"
       >
         INSERT COIN
       </a>
 
       <p class="text-text-muted text-xs mt-6">
         Google アカウントでログイン
+      </p>
+    </div>
+
+    {/* Feature cards */}
+    <div class="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto w-full">
+      <div class="border border-bg-raised rounded-xl p-6 text-center bg-bg-surface/50 hover:border-neon-pink/30 transition-colors">
+        <p class="text-3xl mb-3">💀</p>
+        <h3 class="font-['Orbitron'] text-xs text-neon-pink tracking-widest mb-2">CHALLENGE</h3>
+        <p class="text-text-secondary text-xs leading-relaxed">
+          「フルマラソン完走（運動歴ゼロ）」「完璧なだし巻き卵」<br/>
+          無謀な挑戦を宣言して毎日記録する
+        </p>
+      </div>
+      <div class="border border-bg-raised rounded-xl p-6 text-center bg-bg-surface/50 hover:border-neon-cyan/30 transition-colors">
+        <p class="text-3xl mb-3">🤝</p>
+        <h3 class="font-['Orbitron'] text-xs text-neon-cyan tracking-widest mb-2">RESONANCE</h3>
+        <p class="text-text-secondary text-xs leading-relaxed">
+          「わかる」「ドンマイ」「俺もだ」<br/>
+          3種の共鳴で仲間の無理ゲーを称え合う
+        </p>
+      </div>
+      <div class="border border-bg-raised rounded-xl p-6 text-center bg-bg-surface/50 hover:border-neon-yellow/30 transition-colors">
+        <p class="text-3xl mb-3">🕹️</p>
+        <h3 class="font-['Orbitron'] text-xs text-neon-yellow tracking-widest mb-2">ARCADE</h3>
+        <p class="text-text-secondary text-xs leading-relaxed">
+          27種のミニゲームで遊ぶ<br/>
+          コインを賭けて、スコアをフィードに投稿
+        </p>
+      </div>
+    </div>
+
+    {/* Mock preview */}
+    <div class="mt-16 max-w-md mx-auto w-full">
+      <div class="border border-bg-raised rounded-xl p-4 bg-bg-surface/30">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-6 h-6 rounded-full bg-bg-raised flex items-center justify-center text-sm">🐱</div>
+          <span class="text-text-secondary text-xs">たなか</span>
+          <span class="ml-auto font-['Orbitron'] text-[10px] text-neon-cyan">DAY 205</span>
+        </div>
+        <p class="text-text-primary text-sm mb-2">やった！！！ついに完璧なだし巻きが焼けた！！！泣いてる！！！</p>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="px-2 py-0.5 border border-neon-cyan text-neon-cyan font-['Orbitron'] text-[10px]">CLEAR</span>
+          <span class="text-text-muted ml-auto">🤝 1,847</span>
+        </div>
+      </div>
+      <p class="text-text-muted text-[10px] text-center mt-3 font-['Orbitron'] tracking-widest">
+        205日目の奇跡。これがNORIGEE。
       </p>
     </div>
   </main>

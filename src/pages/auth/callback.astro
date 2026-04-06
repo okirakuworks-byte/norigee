@@ -1,5 +1,34 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { createSupabaseServer } from '../../lib/supabase';
+
+const code = Astro.url.searchParams.get('code');
+
+if (code) {
+  const supabase = createSupabaseServer(Astro);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    return Astro.redirect('/auth/login?error=auth_failed');
+  }
+
+  // Check if profile exists — redirect to setup if not
+  if (data.user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      return Astro.redirect('/profile/setup');
+    }
+  }
+
+  return Astro.redirect('/home');
+}
+
+// No code in query params — fall through to client-side handling for hash tokens
 ---
 
 <Layout title="Loading...">
@@ -13,38 +42,44 @@ import Layout from '../../layouts/Layout.astro';
 
   const supabase = createSupabaseBrowser();
 
-  // Implicit flow: tokens come in URL hash (#access_token=...)
-  // PKCE flow: code comes in query string (?code=...)
-  // Handle both cases
-
+  // Fallback: check if session was already set (e.g. hash fragment tokens)
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const queryParams = new URLSearchParams(window.location.search);
-
   const accessToken = hashParams.get('access_token');
-  const code = queryParams.get('code');
+
+  async function redirectWithProfileCheck() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      window.location.replace('/auth/login?error=auth_failed');
+      return;
+    }
+    // Check if profile exists
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    window.location.replace(profile ? '/home' : '/profile/setup');
+  }
 
   if (accessToken) {
-    // Implicit flow — Supabase client auto-detects hash tokens
-    // Just wait for the session to be set
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      window.location.replace('/home');
+      await redirectWithProfileCheck();
     } else {
-      // Give it a moment to process
       setTimeout(async () => {
         const { data: { session: s } } = await supabase.auth.getSession();
-        window.location.replace(s ? '/home' : '/auth/login?error=auth_failed');
+        if (s) {
+          await redirectWithProfileCheck();
+        } else {
+          window.location.replace('/auth/login?error=auth_failed');
+        }
       }, 1000);
     }
-  } else if (code) {
-    // PKCE flow
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    window.location.replace(error ? '/auth/login?error=auth_failed' : '/home');
   } else {
-    // No tokens or code — try checking session (might already be set by Supabase auto-detection)
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      window.location.replace('/home');
+      await redirectWithProfileCheck();
     } else {
       window.location.replace('/auth/login');
     }

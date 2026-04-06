@@ -17,7 +17,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 /** Browser-side client (used in <script> tags) */
 export function createSupabaseBrowser() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
-    auth: { flowType: 'implicit' },
+    auth: { flowType: 'pkce' },
   });
 }
 

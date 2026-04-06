@@ -2,24 +2,36 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toggleResonance, fetchResonancesForPost, addComment, fetchComments, type Comment } from '../lib/api';
 import { earnResonanceReward, earnCommentReward } from '../lib/wallet';
-import { supabase } from '../lib/supabase';
 import type { FeedPost, ResonanceType } from '../lib/types';
+
+interface ResonanceCounts {
+  wakaru: number;
+  donmai: number;
+  oremoda: number;
+}
 
 interface Props {
   post: FeedPost;
   index: number;
+  featured?: boolean;
+  /** Pre-fetched resonance counts from bulk query (avoids N+1) */
+  initialResonances?: ResonanceCounts;
+  /** Pre-fetched current user's resonance type */
+  initialMyResonance?: ResonanceType | null;
 }
 
-export default function PostCard({ post, index }: Props) {
+export default function PostCard({ post, index, featured = false, initialResonances, initialMyResonance }: Props) {
   const isFailed = post.result === 'failure';
   const initialRotate = useRef((Math.random() - 0.5) * 4);
 
-  const [resonances, setResonances] = useState({
-    wakaru: post.resonance_count > 0 ? post.resonance_count : 0,
-    donmai: 0,
-    oremoda: 0,
-  });
-  const [myResonance, setMyResonance] = useState<ResonanceType | null>(null);
+  const [resonances, setResonances] = useState<ResonanceCounts>(
+    initialResonances ?? {
+      wakaru: post.resonance_count > 0 ? post.resonance_count : 0,
+      donmai: 0,
+      oremoda: 0,
+    }
+  );
+  const [myResonance, setMyResonance] = useState<ResonanceType | null>(initialMyResonance ?? null);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -53,96 +65,95 @@ export default function PostCard({ post, index }: Props) {
     }
   };
 
-  // Load initial resonance counts
+  // Load initial resonance counts (skip if pre-fetched via initialResonances)
   useEffect(() => {
+    if (initialResonances) return;
     fetchResonancesForPost(post.id).then(({ counts }) => {
       setResonances(counts);
     });
-  }, [post.id]);
+  }, [post.id, initialResonances]);
 
-  // Realtime subscription for resonance changes
-  useEffect(() => {
-    const channel = supabase
-      .channel(`resonances-${post.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'resonances', filter: `post_id=eq.${post.id}` },
-        () => {
-          // Re-fetch counts on any change
-          fetchResonancesForPost(post.id).then(({ counts }) => {
-            setResonances(counts);
-          });
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [post.id]);
+  // Note: Realtime resonance updates are handled via optimistic local state
+  // in handleResonance(). Per-PostCard Realtime channels were removed to prevent
+  // channel explosion (20 posts = 20 WebSocket channels).
 
   const [coinPopup, setCoinPopup] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const handleResonance = useCallback(async (type: ResonanceType) => {
     const result = await toggleResonance(post.id, type);
     if ('error' in result && result.error) return;
 
     if (result.action === 'added') {
-      if (myResonance && myResonance !== type) {
-        setResonances(prev => ({ ...prev, [myResonance]: Math.max(0, prev[myResonance] - 1) }));
-      }
       setResonances(prev => ({ ...prev, [type]: prev[type] + 1 }));
       setMyResonance(type);
-      // Earn coins
       const reward = await earnResonanceReward();
       if (reward.earned) setCoinPopup(`+¥${reward.amount}`);
+    } else if (result.action === 'switched' && 'previousType' in result) {
+      // DB already deleted old + inserted new
+      setResonances(prev => ({
+        ...prev,
+        [result.previousType]: Math.max(0, prev[result.previousType] - 1),
+        [type]: prev[type] + 1,
+      }));
+      setMyResonance(type);
     } else {
+      // removed
       setResonances(prev => ({ ...prev, [type]: Math.max(0, prev[type] - 1) }));
       setMyResonance(null);
     }
-  }, [post.id, myResonance]);
+  }, [post.id]);
 
   return (
     <motion.div
       initial={{ opacity: 0, rotate: initialRotate.current, scale: 0.95 }}
       animate={{ opacity: 1, rotate: 0, scale: 1 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="relative bg-bg-surface border border-bg-raised rounded-xl overflow-hidden hover:border-bg-raised/80 transition-colors"
+      className={`relative bg-bg-surface border rounded-xl overflow-hidden transition-colors ${
+        featured
+          ? 'border-neon-yellow/30 hover:border-neon-yellow/50 shadow-[0_0_20px_rgba(255,230,0,0.08)]'
+          : 'border-bg-raised hover:border-neon-cyan/20 hover:shadow-[0_0_12px_rgba(0,245,212,0.06)]'
+      }`}
     >
-      {/* Challenge badge */}
-      <div className="px-4 pt-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {post.challenge_type === 'daily' ? (
-            <span className="text-neon-yellow text-xs">⚡</span>
-          ) : (
-            <span className="text-neon-cyan text-xs">🎮</span>
-          )}
-          <span className="text-text-muted text-xs truncate max-w-[180px]">
-            {post.challenge_title}
-          </span>
-        </div>
-        <span className="font-['Orbitron'] text-xs text-neon-cyan">
-          DAY {post.day_number}
-        </span>
-      </div>
-
-      {/* User info */}
-      <div className="px-4 pt-2 flex items-center gap-2">
+      {/* User info + meta */}
+      <div className="px-4 pt-3 flex items-center gap-2">
         {post.profiles.avatar_url ? (
           <img
             src={post.profiles.avatar_url}
             alt={`${post.profiles.display_name}のアバター`}
-            className="w-6 h-6 rounded-full"
+            className="w-7 h-7 rounded-full border border-bg-raised/80"
             loading="lazy"
           />
         ) : (
-          <div className="w-6 h-6 rounded-full bg-bg-raised flex items-center justify-center text-xs text-text-muted">
-            ?
+          <div className="w-7 h-7 rounded-full bg-bg-raised flex items-center justify-center text-sm border border-bg-raised/80">
+            {post.profiles.avatar_emoji ?? '?'}
           </div>
         )}
-        <span className="text-text-secondary text-sm">{post.profiles.display_name}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-text-primary text-sm font-bold">{post.profiles.display_name}</span>
+          <div className="flex items-center gap-1.5">
+            {post.challenge_type === 'daily' ? (
+              <span className="text-neon-yellow text-[10px]">⚡</span>
+            ) : (
+              <span className="text-neon-cyan text-[10px]">🎮</span>
+            )}
+            <span className="text-text-muted text-[10px] truncate">
+              {post.challenge_title}
+            </span>
+          </div>
+        </div>
+        <span className="font-['Orbitron'] text-xs text-neon-cyan flex items-center gap-1 shrink-0">
+          DAY {post.day_number}
+          {post.day_number >= 100 && (
+            <span className="text-[10px] text-neon-yellow border border-neon-yellow/50 px-1 rounded">
+              LEGEND
+            </span>
+          )}
+        </span>
       </div>
 
       {/* Content */}
-      <div className="px-4 py-3 relative">
+      <div className="px-4 py-3 relative pr-20">
         <p className="text-text-primary text-sm leading-relaxed whitespace-pre-wrap">
           {post.content}
         </p>
@@ -170,6 +181,57 @@ export default function PostCard({ post, index }: Props) {
         )}
       </div>
 
+      {/* Images */}
+      {post.image_keys.length > 0 && (
+        <div className={`px-4 pb-2 ${post.image_keys.length > 1 ? 'grid grid-cols-2 gap-1.5' : ''}`}>
+          {post.image_keys.map((url) => (
+            <button
+              key={url}
+              type="button"
+              onClick={() => setLightboxUrl(url)}
+              className="block w-full overflow-hidden rounded-lg border border-bg-raised hover:border-neon-cyan/30 transition-colors"
+            >
+              <img
+                src={url}
+                alt="投稿画像"
+                className="w-full h-32 object-cover"
+                loading="lazy"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightboxUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-deep/90 backdrop-blur-sm p-4"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <motion.img
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              src={lightboxUrl}
+              alt="拡大画像"
+              className="max-w-full max-h-[85vh] rounded-xl border border-bg-raised"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-2xl"
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Resonance buttons */}
       <div className="px-4 pb-3 flex items-center gap-3">
         <ResonanceButton
@@ -189,9 +251,12 @@ export default function PostCard({ post, index }: Props) {
         />
         <button
           onClick={() => setShowComments(!showComments)}
-          className="ml-auto text-text-muted text-xs hover:text-text-primary transition-colors"
+          className="ml-auto flex items-center gap-1 text-xs text-text-muted hover:text-text-primary hover:bg-bg-raised px-2 py-1 rounded transition-colors"
+          aria-expanded={showComments}
+          aria-label={`コメント${commentCount}件`}
         >
-          💬 {commentCount}
+          💬 <span>{commentCount}</span>
+          <span className="text-[10px]">{showComments ? '▲' : '▼'}</span>
         </button>
       </div>
 
@@ -226,7 +291,9 @@ export default function PostCard({ post, index }: Props) {
                   {c.profiles.avatar_url ? (
                     <img src={c.profiles.avatar_url} alt="" className="w-5 h-5 rounded-full mt-0.5" />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-bg-raised mt-0.5" />
+                    <div className="w-5 h-5 rounded-full bg-bg-raised mt-0.5 flex items-center justify-center text-[10px]">
+                      {c.profiles.avatar_emoji ?? '?'}
+                    </div>
                   )}
                   <div>
                     <span className="text-text-secondary text-[10px]">{c.profiles.display_name}</span>
@@ -272,8 +339,12 @@ function ResonanceButton({
   onClick: (type: ResonanceType) => void;
 }) {
   return (
-    <button
+    <motion.button
       onClick={() => onClick(type)}
+      whileTap={{ scale: 0.88 }}
+      whileHover={{ scale: 1.05 }}
+      animate={active ? { scale: [1, 1.2, 1] } : {}}
+      transition={{ duration: 0.2 }}
       className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
         active
           ? 'bg-neon-yellow/20 text-neon-yellow'
@@ -284,6 +355,6 @@ function ResonanceButton({
       <span>{emoji}</span>
       <span>{label}</span>
       {count > 0 && <span className="text-text-muted">{count}</span>}
-    </button>
+    </motion.button>
   );
 }

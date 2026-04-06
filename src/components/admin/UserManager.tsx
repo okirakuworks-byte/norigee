@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
+import { createSupabaseBrowser } from '../../lib/supabase';
+
+const supabase = createSupabaseBrowser();
 
 interface UserRow {
   id: string;

@@ -8,3 +8,8 @@ import Lottery from '../components/Lottery';
   <Header />
   <Lottery client:load />
 </Layout>
+
+<script>
+  import { requireProfile } from '../lib/authGuard';
+  requireProfile();
+</script>

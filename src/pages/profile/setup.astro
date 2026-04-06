@@ -1,0 +1,53 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProfileSetupForm from '../../components/ProfileSetupForm';
+---
+
+<Layout title="プレイヤー設定">
+  <div id="setup-loading" class="min-h-screen flex items-center justify-center">
+    <p class="font-['Orbitron'] text-text-muted animate-pulse">LOADING...</p>
+  </div>
+  <div id="setup-form" class="hidden">
+    <ProfileSetupForm client:load userId="" />
+  </div>
+</Layout>
+
+<script>
+  import { createSupabaseBrowser } from '../../lib/supabase';
+
+  const supabase = createSupabaseBrowser();
+
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      window.location.replace('/auth/login');
+      return;
+    }
+
+    // Already has profile → go home
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      window.location.replace('/home');
+      return;
+    }
+
+    // Show form and inject userId
+    document.getElementById('setup-loading')?.classList.add('hidden');
+    document.getElementById('setup-form')?.classList.remove('hidden');
+
+    // Dispatch custom event with user data for the React component
+    window.dispatchEvent(new CustomEvent('norigee:setup-user', {
+      detail: {
+        userId: user.id,
+        googleName: user.user_metadata?.full_name ?? undefined,
+      }
+    }));
+  }
+
+  init();
+</script>

@@ -3,9 +3,9 @@ import Layout from '../../layouts/Layout.astro';
 ---
 
 <Layout title="INSERT COIN">
-  <main class="flex flex-col items-center justify-center min-h-screen px-4">
+  <main class="flex flex-col items-center justify-center min-h-screen px-4 arcade-grid-bg">
     <div class="text-center max-w-md">
-      <h1 class="font-['Orbitron'] text-4xl font-black tracking-wider mb-2">
+      <h1 class="font-['Orbitron'] text-4xl font-black tracking-wider mb-2 text-glow-yellow">
         <span class="text-neon-yellow">INSERT</span> <span class="text-neon-pink">COIN</span>
       </h1>
       <p class="text-text-secondary mb-12">
@@ -13,15 +13,24 @@ import Layout from '../../layouts/Layout.astro';
       </p>
 
       <a
-        id="github-login"
+        id="google-login"
         href="#"
-        class="inline-flex items-center gap-3 px-8 py-4 bg-bg-surface border border-bg-raised rounded-lg hover:border-neon-yellow hover:shadow-[0_0_20px_rgba(255,230,0,0.2)] transition-all duration-300"
+        class="inline-flex items-center gap-3 px-8 py-4 bg-bg-surface border border-neon-yellow/30 rounded-lg hover:border-neon-yellow hover:shadow-[0_0_20px_rgba(255,230,0,0.3)] transition-all duration-300"
       >
-        <svg class="w-5 h-5 text-text-primary" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+        <svg class="w-5 h-5" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11.96 11.96 0 001 12c0 1.94.46 3.77 1.18 5.42l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
         </svg>
-        <span class="text-text-primary font-medium">GitHub でログイン</span>
+        <span id="login-text" class="text-text-primary font-medium">Google でログイン</span>
       </a>
+
+      {/* Error message area */}
+      <div id="login-error" class="hidden mt-6 px-4 py-3 bg-neon-pink/10 border border-neon-pink/30 rounded-lg">
+        <p class="text-neon-pink text-sm font-bold mb-1">LOGIN FAILED</p>
+        <p class="text-text-secondary text-xs">認証に失敗しました。もう一度お試しください。</p>
+      </div>
 
       <p class="text-text-muted text-xs mt-8">
         ログインすることで利用規約に同意したものとみなされます
@@ -35,20 +44,31 @@ import Layout from '../../layouts/Layout.astro';
 
   const supabase = createSupabaseBrowser();
 
-  document.getElementById('github-login')?.addEventListener('click', async (e) => {
+  // Show error if redirected back with ?error=
+  const urlError = new URLSearchParams(window.location.search).get('error');
+  if (urlError) {
+    document.getElementById('login-error')?.classList.remove('hidden');
+  }
+
+  document.getElementById('google-login')?.addEventListener('click', async (e) => {
     e.preventDefault();
+    const btn = e.currentTarget as HTMLAnchorElement;
+    const textEl = document.getElementById('login-text');
+
+    // Loading state
+    if (textEl) textEl.textContent = 'CONNECTING...';
+    btn.classList.add('opacity-60', 'pointer-events-none');
+
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
+      provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (error) {
-      // Display error in UI instead of console
-      const msg = document.createElement('p');
-      msg.className = 'text-neon-pink text-sm mt-4';
-      msg.textContent = 'ログインに失敗しました。もう一度お試しください。';
-      document.getElementById('github-login')?.parentElement?.appendChild(msg);
+      if (textEl) textEl.textContent = 'Google でログイン';
+      btn.classList.remove('opacity-60', 'pointer-events-none');
+      document.getElementById('login-error')?.classList.remove('hidden');
     }
   });
 </script>

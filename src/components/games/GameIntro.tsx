@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getWallet, payForPlay, canPlay } from '../../lib/wallet';
+import { getWallet, payForPlay, canPlay, FREE_PLAY_MODE } from '../../lib/wallet';
 import GameComments from './GameComments';
 
 interface Control {
@@ -39,7 +39,7 @@ export default function GameIntro({
   buttonText = 'START',
   buttonColor = 'bg-neon-yellow text-bg-deep',
   onStart,
-  freePlay = false,
+  freePlay = FREE_PLAY_MODE,
 }: Props) {
   const [balance, setBalance] = useState<number | null>(null);
   const [inserting, setInserting] = useState(false);

@@ -1,4 +1,6 @@
-import { supabase } from './supabase';
+import { createSupabaseBrowser } from './supabase';
+
+const supabase = createSupabaseBrowser();
 
 // ===== Types =====
 
@@ -270,7 +272,12 @@ export async function drawLottery(): Promise<LotteryResult | null> {
 
 // ===== Play Cost =====
 
+// TODO: 無料開放期間終了後、元のコイン消費ロジックに戻すこと
+export const FREE_PLAY_MODE = true;
+
 export async function canPlay(): Promise<{ canPlay: boolean; method: 'coin' | 'ticket' | 'none'; cost: number }> {
+  if (FREE_PLAY_MODE) return { canPlay: true, method: 'coin', cost: 0 };
+
   const tickets = await getActiveTickets();
   if (tickets.length > 0) return { canPlay: true, method: 'ticket', cost: 0 };
 
@@ -281,6 +288,8 @@ export async function canPlay(): Promise<{ canPlay: boolean; method: 'coin' | 't
 }
 
 export async function payForPlay(): Promise<{ success: boolean; method?: string; error?: string }> {
+  if (FREE_PLAY_MODE) return { success: true, method: 'free' };
+
   // Try ticket first
   const tickets = await getActiveTickets();
   if (tickets.length > 0) {

@@ -1,7 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
-import TopicManager from '../../components/admin/TopicManager';
+import AdminGuard from '../../components/admin/AdminGuard';
+import AdminDashboard from '../../components/admin/AdminDashboard';
 ---
 
 <Layout title="ADMIN">
@@ -13,12 +14,15 @@ import TopicManager from '../../components/admin/TopicManager';
         <span class="text-neon-pink">ADMIN</span> PANEL
       </h1>
       <div class="flex gap-4 text-xs">
-        <a href="/admin" class="text-neon-yellow border-b border-neon-yellow pb-1">お題管理</a>
+        <a href="/admin" class="text-neon-yellow border-b border-neon-yellow pb-1">ダッシュボード</a>
+        <a href="/admin/topics" class="text-text-muted hover:text-text-primary transition-colors">お題管理</a>
         <a href="/admin/users" class="text-text-muted hover:text-text-primary transition-colors">ユーザー</a>
         <a href="/admin/moderation" class="text-text-muted hover:text-text-primary transition-colors">モデレーション</a>
       </div>
     </div>
 
-    <TopicManager client:load />
+    <AdminGuard client:load>
+      <AdminDashboard client:load />
+    </AdminGuard>
   </main>
 </Layout>

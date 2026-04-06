@@ -21,4 +21,59 @@
     color: var(--color-text-primary);
     font-family: 'Noto Sans JP', sans-serif;
   }
+
+  /* Accessible focus ring — arcade neon theme */
+  :focus-visible {
+    outline: 2px solid var(--color-neon-cyan);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Neon glow box-shadows */
+  .neon-glow-yellow {
+    box-shadow: 0 0 20px rgba(255, 230, 0, 0.3), 0 0 60px rgba(255, 230, 0, 0.1);
+  }
+  .neon-glow-pink {
+    box-shadow: 0 0 20px rgba(255, 45, 120, 0.3), 0 0 60px rgba(255, 45, 120, 0.1);
+  }
+  .neon-glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 245, 212, 0.3), 0 0 60px rgba(0, 245, 212, 0.1);
+  }
+
+  /* Neon text-shadows */
+  .text-glow-yellow {
+    text-shadow: 0 0 10px rgba(255, 230, 0, 0.6), 0 0 30px rgba(255, 230, 0, 0.2);
+  }
+  .text-glow-pink {
+    text-shadow: 0 0 10px rgba(255, 45, 120, 0.6), 0 0 30px rgba(255, 45, 120, 0.2);
+  }
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(0, 245, 212, 0.6), 0 0 30px rgba(0, 245, 212, 0.2);
+  }
+
+  /* Shimmer skeleton loading */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-bg-raised) 25%,
+      #2d2d50 50%,
+      var(--color-bg-raised) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Arcade grid background pattern */
+  .arcade-grid-bg {
+    background-image:
+      linear-gradient(rgba(255, 230, 0, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 230, 0, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
